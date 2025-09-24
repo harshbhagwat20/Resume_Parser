@@ -1,0 +1,115 @@
+import pandas as pd
+
+parsed_data = [
+    {
+        'Name': 'Rahul',
+        'Email': 'rahul.doe@email.com',
+        'Phone': '+91-9876543210',
+        'Skills': ['Python', 'Machine Learning', 'SQL'],
+        'Education': ['B.Tech'],
+        'Experience': '3 years of experience'
+    },
+    {
+        'Name': 'Sam Smith',
+        'Email': 'sam.smith@email.com',
+        'Phone': '+91-9123456780',
+        'Skills': ['Java', 'Data Analysis', 'Excel'],
+        'Education': ['MBA'],
+        'Experience': '5 years of experience'
+    }
+]
+
+
+df = pd.DataFrame(parsed_data)
+
+
+df.to_csv('parsed_resumes.csv', index=False)
+
+print("✅ CSV file 'parsed_resumes.csv' created successfully!")
+
+
+import re
+import pdfplumber
+import spacy
+import pandas as pd
+from docx import Document
+
+nlp = spacy.load('en_core_web_sm')
+
+
+def extract_text_from_pdf(file_path):
+    text = ''
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            text += page.extract_text() + '\n'
+    return text
+
+def extract_text_from_docx(file_path):
+    doc = Document(file_path)
+    return '\n'.join([p.text for p in doc.paragraphs])
+
+def extract_name(text):
+    doc = nlp(text)
+    names = [ent.text for ent in doc.ents if ent.label_ == 'PERSON']
+    return names[0] if names else None
+
+def extract_email(text):
+    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}'
+    match = re.search(pattern, text)
+    return match.group() if match else None
+
+def extract_phone_number(text):
+    pattern = r'\+?\d[\d -]{8,12}\d'
+    match = re.search(pattern, text)
+    return match.group() if match else None
+
+def extract_skills(text):
+    skills_list = [
+        'Python', 'Java', 'C++', 'Machine Learning', 'Deep Learning', 
+        'SQL', 'Excel', 'Communication', 'Data Analysis', 'TensorFlow', 'Pandas'
+    ]
+    skills_found = [skill for skill in skills_list if skill.lower() in text.lower()]
+    return skills_found
+
+def extract_education(text):
+    education_keywords = [
+        'B.Tech', 'M.Tech', 'Bachelor', 'Master', 'PhD', 'MBA', 'Diploma'
+    ]
+    education_found = [edu for edu in education_keywords if edu.lower() in text.lower()]
+    return education_found
+
+def extract_experience(text):
+    pattern = r'(\d+)\s+(years|yrs)\s+of\s+experience'
+    match = re.search(pattern, text, re.IGNORECASE)
+    return match.group() if match else None
+
+
+def parse_resume(file_path):
+    if file_path.lower().endswith('.pdf'):
+        text = extract_text_from_pdf(file_path)
+    elif file_path.lower().endswith('.docx'):
+        text = extract_text_from_docx(file_path)
+    else:
+        raise ValueError("Unsupported file format. Only PDF and DOCX are supported.")
+    
+    resume_data = {
+        'Name': extract_name(text),
+        'Email': extract_email(text),
+        'Phone': extract_phone_number(text),
+        'Skills': extract_skills(text),
+        'Education': extract_education(text),
+        'Experience': extract_experience(text)
+    }
+    return resume_data
+
+
+file_path = 'resume_sample.pdf'  
+
+parsed_data = parse_resume(file_path)
+
+df = pd.DataFrame([parsed_data])
+print(df)
+
+df.to_csv('parsed_resume.csv', index=False)
+
+
